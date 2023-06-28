@@ -12,9 +12,3 @@ class Product(SqlAlchemyBase):
     image = Column(String, nullable=True)
     price = Column(Integer, nullable=True)
     quantity = Column(Integer, nullable=True)
-
-    def remove_product(self):
-        self.quantity -= 1
-
-    def add_product(self):
-        self.quantity += 1
