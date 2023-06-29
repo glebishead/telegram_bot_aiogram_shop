@@ -2,6 +2,7 @@ import os
 
 from aiogram.types import Message
 from aiogram.dispatcher import Dispatcher
+from aiogram.dispatcher.filters import Text
 
 from main import messages_text, bot_typing, bot_sending_sticker, bot_sending_photo
 from data import db_session
@@ -13,6 +14,7 @@ def register_user_handlers(dp: Dispatcher) -> None:
 	dp.register_message_handler(start, commands=['start', 'help'])
 	dp.register_message_handler(send_contacts, commands=['contacts'])
 	dp.register_message_handler(show_products, commands=['show_products'])
+	dp.register_message_handler(passed, Text)
 
 
 async def start(message: Message) -> None:
@@ -46,3 +48,7 @@ async def show_products(message: Message) -> None:
 		else:
 			await bot_typing(message, f"{name}\n{description}.\n\nСтоимость {price}₽")
 	db_sess.close()
+
+
+async def passed(_) -> None:
+	print('\nUnresolved command\n')

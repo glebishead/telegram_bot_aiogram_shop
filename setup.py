@@ -10,8 +10,8 @@ if __name__ == '__main__':
 	try:
 		db_session.global_init('db/shop.db')
 		
-		register_user_handlers(dp)
 		register_admin_handlers(dp)
+		register_user_handlers(dp)
 		
 		executor.start_polling(dp, skip_updates=True, on_startup=on_startup_function)
 	except Exception as e:
