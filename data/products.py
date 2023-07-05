@@ -9,6 +9,7 @@ class Product(SqlAlchemyBase):
     name = Column(String)
     category = Column(String, nullable=True)
     description = Column(String, nullable=True)
-    image = Column(String, nullable=True)
+    images = Column(String, nullable=True)
+    videos = Column(String, nullable=True)
     price = Column(Integer, nullable=True)
     quantity = Column(Integer, nullable=True)

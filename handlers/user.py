@@ -4,7 +4,7 @@ from aiogram.types import Message
 from aiogram.dispatcher import Dispatcher
 from aiogram.dispatcher.filters import Text
 
-from main import messages_text, bot_typing, bot_sending_sticker, bot_sending_photo
+from main import messages_text, bot_typing, bot_sending_sticker, bot_sending_media
 from data import db_session
 from data.products import Product
 from data.users import User
@@ -35,18 +35,34 @@ async def start(message: Message) -> None:
 
 async def send_contacts(message: Message) -> None:
 	await bot_sending_sticker(message, 'start_sticker')
-	await bot_typing(message, messages_text['rus']['command_messages']['contacts'])
+	await bot_typing(message, messages_text['rus']['command_messages']['telegram_contacts'], parse_mode='HTML')
+	await bot_typing(message, messages_text['rus']['command_messages']['avito_contacts'], parse_mode='HTML')
+	# with open('text.txt', 'r') as file:
+	# 	await bot_typing(message, file.read(), parse_mode='HTML')
 
 
 async def show_products(message: Message) -> None:
 	db_sess = db_session.create_session()
-	products = db_sess.query(Product.name, Product.description, Product.image, Product.price).all()
-	for el in products:
-		name, description, image, price = el
-		if image not in [None, '']:
-			await bot_sending_photo(message, image, caption=f"{name}\n{description}.\n\nСтоимость {price}₽")
-		else:
-			await bot_typing(message, f"{name}\n{description}.\n\nСтоимость {price}₽")
+	products = db_sess.query(Product.name, Product.category,
+	                         Product.description, Product.images,
+	                         Product.videos, Product.price, Product.quantity).all()
+	if products:
+		for el in products:
+			name, category, description, images, videos, price, quantity = el
+			images = images.split(' - ')
+			videos = videos.split(' - ')
+			
+			if images != [''] or videos != ['']:
+				await bot_sending_media(message, images, videos)
+			if quantity.__class__.__name__ == 'int' and quantity > 0:
+				await bot_typing(message, f"Название: {name}\nКатегория: {category}\n"
+				                          f"Описание: {description}.\nСтоимость {price}₽")
+			else:
+				await bot_typing(message, f"Название: {name}\nКатегория: {category}\n"
+				                          f"Описание: {description}.\nСтоимость {price}₽\n\n"
+				                          f"В настоящее время нет в наличии")
+	else:
+		await bot_typing(message, f"В настоящее время на складе нет товаров")
 	db_sess.close()
 
 
