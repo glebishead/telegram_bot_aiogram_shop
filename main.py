@@ -64,10 +64,10 @@ async def bot_sending_media(message: Union[Message, CallbackQuery],
 	if images is not None and images != ['']:
 		for image in images:
 			media.attach_photo(image)
-
 	if videos is not None and videos != ['']:
 		for video in videos:
 			media.attach_video(video)
+			
 	if message.__class__.__name__ == 'Message':
 		await bot.send_chat_action(message.from_id, 'upload_photo')
 		await sleep(0.2)
@@ -78,5 +78,6 @@ async def bot_sending_media(message: Union[Message, CallbackQuery],
 		await bot.send_media_group(message['from']['id'], media=media)
 
 
-async def bot_answer_callback_query(callback: CallbackQuery, text: str = None, show_alert: bool = True, **kwargs) -> None:
+async def bot_answer_callback_query(callback: CallbackQuery, text: str = None,
+                                    show_alert: bool = True, **kwargs) -> None:
 	await bot.answer_callback_query(callback.id, text=text, show_alert=show_alert, **kwargs)

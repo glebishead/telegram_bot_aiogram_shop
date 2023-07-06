@@ -16,7 +16,7 @@ def register_admin_handlers(dp: Dispatcher) -> None:
 	dp.register_message_handler(add_product, commands=['add_product'])
 	
 	dp.register_message_handler(add_product_cancel, commands=['cancel'], state=AddProductStates.states)
-	dp.register_message_handler(add_product_skip, commands=['skip'], state='*')
+	dp.register_message_handler(add_product_skip, commands=['skip'], state=AddProductStates.states)
 	
 	dp.register_message_handler(add_product_name, state=AddProductStates.name)
 	dp.register_message_handler(add_product_category, state=AddProductStates.category)
@@ -37,6 +37,16 @@ def register_admin_handlers(dp: Dispatcher) -> None:
 	                            content_types=['photo', 'video'], state=EditProductStates.edit_product)
 	dp.register_message_handler(edit_product_finish_with_media, content_types=['photo', 'video'],
 	                            state=EditProductStates.edit_product)
+	
+	dp.register_message_handler(edit_status, commands=['edit_status'])
+	dp.register_message_handler(edit_status_cancel, commands=['cancel'], state=EditStatusStates.states)
+	dp.register_message_handler(choose_status, state=EditStatusStates.user_id)
+	dp.register_callback_query_handler(edit_status_end, state=EditStatusStates.new_status)
+	
+	dp.register_message_handler(show_everybody_start, commands=['show_everyone'])
+	dp.register_message_handler(show_everybody_cancel, commands=['cancel'], state=ShowEveryoneStates.show)
+	dp.register_message_handler(show_everybody_end, content_types=['photo', 'video', 'sticker', 'text'],
+	                            state=ShowEveryoneStates.show)
 
 
 class AddProductStates(StatesGroup):
@@ -52,6 +62,15 @@ class EditProductStates(StatesGroup):
 	product_info = State()
 	new_info = State()
 	edit_product = State()
+
+
+class EditStatusStates(StatesGroup):
+	user_id = State()
+	new_status = State()
+
+
+class ShowEveryoneStates(StatesGroup):
+	show = State()
 
 
 async def add_product(message: Message) -> None:
@@ -341,3 +360,83 @@ async def edit_product_cancel(callback: CallbackQuery, state=FSMContext) -> None
 		return
 	await state.finish()
 	await bot_typing(callback, messages_text['rus']['fail']['edit_product_cancel'])
+
+
+async def edit_status(message: Message) -> None:
+	db_sess = db_session.create_session()
+	person = db_sess.query(User).filter(User.id == message.from_id).first()
+	if person.status not in ('admin', 'owner'):
+		await bot_typing(message, messages_text['rus']['fail']['low_status'])
+	else:
+		await bot_typing(message, messages_text['rus']['edit_status_states']['enter_id'])
+		await EditStatusStates.user_id.set()
+	db_sess.close()
+
+
+async def choose_status(message: Message, state=FSMContext) -> None:
+	db_sess = db_session.create_session()
+	try:
+		async with state.proxy() as _data:
+			_data['id'] = int(message.text)
+		if db_sess.query(User).filter(User.id == _data['id']).first() is None:
+			await bot_typing(message, messages_text['rus']['fail']['id_not_found'])
+			await bot_typing(message, messages_text['rus']['edit_status_states']['enter_id'])
+		else:
+			await bot_typing(message, messages_text['rus']['edit_status_states']['enter_status'],
+			                 reply_markup=InlineKeyboardMarkup(one_time_keyboard=True).add(
+				InlineKeyboardButton('user', callback_data=f'user')).add(
+				InlineKeyboardButton('seller', callback_data=f'seller')).add(
+				InlineKeyboardButton('owner', callback_data=f'owner')).add(
+				InlineKeyboardButton('admin', callback_data=f'admin')))
+			await EditStatusStates.next()
+	except ValueError:
+		await bot_typing(message, messages_text['rus']['edit_status_states']['enter_id'])
+	db_sess.close()
+
+
+async def edit_status_end(callback: CallbackQuery, state=FSMContext):
+	async with state.proxy() as _data:
+		_data['status'] = callback.data
+		
+	db_sess = db_session.create_session()
+	person = db_sess.query(User).filter(User.id == _data['id']).first()
+	person.status = _data['status']
+	db_sess.commit()
+	db_sess.close()
+	
+	await state.finish()
+	await bot_answer_callback_query(callback, messages_text['rus']['success']['edit_status'])
+
+
+async def edit_status_cancel(message: Message, state=FSMContext) -> None:
+	if await state.get_state() is None:
+		return
+	await bot_typing(message, messages_text['rus']['edit_status_states']['cancel'])
+	await state.finish()
+	
+	
+async def show_everybody_start(message: Message) -> None:
+	db_sess = db_session.create_session()
+	person = db_sess.query(User).filter(User.id == message.from_id).first()
+	if person.status not in ('admin', 'owner'):
+		await bot_typing(message, messages_text['rus']['fail']['low_status'])
+	else:
+		await bot_typing(message, messages_text['rus']['show_everyone_states']['start'])
+		await ShowEveryoneStates.show.set()
+	db_sess.close()
+
+
+async def show_everybody_end(message: Message, state=FSMContext) -> None:
+	db_sess = db_session.create_session()
+	persons = db_sess.query(User).all()
+	for person in persons:
+		await message.copy_to(person.id)
+	await bot_typing(message, messages_text['rus']['show_everyone_states']['end'])
+	await state.finish()
+
+
+async def show_everybody_cancel(message: Message, state=FSMContext) -> None:
+	if await state.get_state() is None:
+		return
+	await bot_typing(message, messages_text['rus']['show_everyone_states']['cancel'])
+	await state.finish()
