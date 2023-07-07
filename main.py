@@ -20,7 +20,9 @@ with open('static/messages/messages.json', 'r', encoding='utf-8') as _file:
 
 
 async def on_startup_function(_) -> None:
-	print("----------------------------------", "Connection is started", "Bot is online", sep='\n')
+	print("----------------------------------",
+	      "Connection is started",
+	      "Bot is online", sep='\n')
 
 
 async def bot_typing(message: Union[Message, CallbackQuery], text: str, **kwargs) -> None:

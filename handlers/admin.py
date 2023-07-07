@@ -79,7 +79,7 @@ async def add_product(message: Message) -> None:
 	if person.status not in ('admin', 'owner'):
 		await bot_typing(message, messages_text['rus']['fail']['low_status'])
 	else:
-		await bot_typing(message, messages_text['rus']['add_product_states']['name'])
+		await bot_typing(message, messages_text['rus']['add_product']['name'])
 		await AddProductStates.name.set()
 	db_sess.close()
 
@@ -87,21 +87,21 @@ async def add_product(message: Message) -> None:
 async def add_product_name(message: Message, state=FSMContext) -> None:
 	async with state.proxy() as data:
 		data['name'] = message.text
-	await bot_typing(message, messages_text['rus']['add_product_states']['category'])
+	await bot_typing(message, messages_text['rus']['add_product']['category'])
 	await AddProductStates.next()
 
 
 async def add_product_category(message: Message, state=FSMContext) -> None:
 	async with state.proxy() as data:
 		data['category'] = message.text
-	await bot_typing(message, messages_text['rus']['add_product_states']['description'])
+	await bot_typing(message, messages_text['rus']['add_product']['description'])
 	await AddProductStates.next()
 
 
 async def add_product_description(message: Message, state=FSMContext) -> None:
 	async with state.proxy() as data:
 		data['description'] = message.text
-	await bot_typing(message, messages_text['rus']['add_product_states']['media'])
+	await bot_typing(message, messages_text['rus']['add_product']['media'])
 	await AddProductStates.next()
 
 
@@ -117,7 +117,7 @@ async def add_product_media_group(messages: list[Message], state=FSMContext) -> 
 				data['images'].append(message.photo[-1].file_id)
 			elif 'videos' in data.keys() and message.video:
 				data['videos'].append(message.video['file_id'])
-	await bot_typing(message, messages_text['rus']['add_product_states']['price'])
+	await bot_typing(message, messages_text['rus']['add_product']['price'])
 	await AddProductStates.next()
 
 
@@ -127,14 +127,14 @@ async def add_product_media(message: Message, state=FSMContext) -> None:
 			data['images'] = [message.photo[-1].file_id]
 		elif message.video:
 			data['videos'] = [message.video['file_id']]
-	await bot_typing(message, messages_text['rus']['add_product_states']['price'])
+	await bot_typing(message, messages_text['rus']['add_product']['price'])
 	await AddProductStates.next()
 
 
 async def add_product_price(message: Message, state=FSMContext) -> None:
 	async with state.proxy() as data:
 		data['price'] = int(message.text)
-	await bot_typing(message, messages_text['rus']['add_product_states']['quantity'])
+	await bot_typing(message, messages_text['rus']['add_product']['quantity'])
 	await AddProductStates.next()
 
 
@@ -157,14 +157,14 @@ async def add_product_quantity(message: Message, state=FSMContext) -> None:
 	db_sess.commit()
 	db_sess.close()
 	
-	await bot_typing(message, messages_text['rus']['add_product_states']['end'])
+	await bot_typing(message, messages_text['rus']['add_product']['end'])
 	await state.finish()
 
 
 async def add_product_cancel(message: Message, state=FSMContext) -> None:
 	if await state.get_state() is None:
 		return
-	await bot_typing(message, messages_text['rus']['add_product_states']['cancel'])
+	await bot_typing(message, messages_text['rus']['add_product']['cancel'])
 	await state.finish()
 
 
@@ -179,7 +179,7 @@ async def add_product_skip(message: Message, state=FSMContext) -> None:
 	
 	cur_state = await state.get_state()
 	if cur_state is None:
-		await bot_typing(message, messages_text['rus']['add_product_states']['end'])
+		await bot_typing(message, messages_text['rus']['add_product']['end'])
 		async with state.proxy() as data:
 			if 'images' not in data.keys():
 				data['images'] = ''
@@ -198,8 +198,7 @@ async def add_product_skip(message: Message, state=FSMContext) -> None:
 		db_sess.commit()
 		db_sess.close()
 	else:
-		await bot_typing(message,
-		                 messages_text['rus']['add_product_states'][cur_state.replace('AddProductStates:', '')])
+		await bot_typing(message, messages_text['rus']['add_product'][cur_state.replace('AddProductStates:', '')])
 
 
 async def choose_product(message: Message) -> None:
@@ -218,11 +217,14 @@ async def choose_product(message: Message) -> None:
 			
 			if images != [''] or videos != ['']:
 				await bot_sending_media(message, images, videos)
-			await bot_typing(message, f"Название: {name}\nКатегория: {category}\n"
-			                          f"Описание: {description}.\nСтоимость {price}₽",
+			await bot_typing(message, messages_text['rus']['show_product'].replace(
+				'{name}', f'{name}').replace(
+				'{category}', f'{category}').replace(
+				'{description}', f'{description}').replace(
+				'{price}', f'{price}'),
 			                 reply_markup=InlineKeyboardMarkup(one_time_keyboard=True).add(
-					                    InlineKeyboardButton('Изменить', callback_data=f'edit_{product_id}')).add(
-					                    InlineKeyboardButton('Удалить', callback_data=f'delete_{product_id}')))
+					                    InlineKeyboardButton(messages_text['rus']['change'], callback_data=f'edit_{product_id}')).add(
+					                    InlineKeyboardButton(messages_text['rus']['delete'], callback_data=f'delete_{product_id}')))
 		await EditProductStates.product_info.set()
 	db_sess.close()
 
@@ -237,7 +239,7 @@ async def choose_product_info(callback: CallbackQuery, state=FSMContext):
 		db_sess.commit()
 		db_sess.close()
 		await state.finish()
-		await bot_answer_callback_query(callback, messages_text['rus']['success']['delete_product'])
+		await bot_answer_callback_query(callback, messages_text['rus']['edit_product']['delete'])
 	else:
 		async with state.proxy() as _data:
 			_data['product_id'] = int(callback.data.replace('edit_', ''))
@@ -250,22 +252,23 @@ async def choose_product_info(callback: CallbackQuery, state=FSMContext):
 		name, category, description, images, videos, price, quantity = product
 		
 		markup = InlineKeyboardMarkup(one_time_keyboard=True).add(
-			InlineKeyboardButton('изменить название', callback_data=f'name')).add(
-			InlineKeyboardButton('изменить категорию', callback_data=f'category')).add(
-			InlineKeyboardButton('изменить описание', callback_data=f'description')).add(
-			InlineKeyboardButton('изменить медиа файлы', callback_data=f'media')).add(
-			InlineKeyboardButton('изменить цену', callback_data=f'price')).add(
-			InlineKeyboardButton('изменить количество', callback_data=f'quantity'))
+			InlineKeyboardButton(messages_text['rus']['edit_product']['name'], callback_data=f'name')).add(
+			InlineKeyboardButton(messages_text['rus']['edit_product']['category'], callback_data=f'category')).add(
+			InlineKeyboardButton(messages_text['rus']['edit_product']['description'], callback_data=f'description')).add(
+			InlineKeyboardButton(messages_text['rus']['edit_product']['media'], callback_data=f'media')).add(
+			InlineKeyboardButton(messages_text['rus']['edit_product']['price'], callback_data=f'price')).add(
+			InlineKeyboardButton(messages_text['rus']['edit_product']['quantity'], callback_data=f'quantity'))
 	
 		images = images.split(' - ')
 		videos = videos.split(' - ')
 		
 		if images != [''] or videos != ['']:
 			await bot_sending_media(callback, images, videos)
-		await bot_typing(callback, f"Название: {name}\nКатегория: {category}\n"
-	                                   f"Описание: {description}.\nСтоимость {price}₽\n"
-	                                   f"Количество: {quantity}",
-	                     reply_markup=markup)
+		await bot_typing(callback, messages_text['rus']['show_product'].replace(
+				'{name}', f'{name}').replace(
+				'{category}', f'{category}').replace(
+				'{description}', f'{description}').replace(
+				'{price}', f'{price}'), reply_markup=markup)
 		
 		await EditProductStates.next()
 		db_sess.close()
@@ -274,12 +277,7 @@ async def choose_product_info(callback: CallbackQuery, state=FSMContext):
 async def enter_new_info(callback: CallbackQuery, state=FSMContext):
 	async with state.proxy() as _data:
 		_data['info_type'] = callback.data
-	await bot_typing(callback, {'name': 'Введите новое название товара',
-	                                    'category': 'Введите новую категорию товара',
-	                                    'description': 'Введите новое описание товара',
-	                                    'media': 'Прикрепите новые медиа файлы товара',
-	                                    'price': 'Введите новую цену товара',
-	                                    'quantity': 'Введите новое количество товара'}[_data['info_type']])
+	await bot_typing(callback, messages_text['rus']['edit_product']['enter'][_data['info_type']])
 	await EditProductStates.next()
 
 
@@ -305,7 +303,7 @@ async def edit_product_finish_with_text(message: Message, state=FSMContext):
 	db_sess.close()
 	
 	await state.finish()
-	await bot_typing(message, messages_text['rus']['success']['edit_product'])
+	await bot_typing(message, messages_text['rus']['edit_product']['end'])
 
 
 @media_group_handler
@@ -335,7 +333,7 @@ async def edit_product_finish_with_media_group(messages: list[Message], state=FS
 	db_sess.close()
 	
 	await state.finish()
-	await bot_typing(messages[-1], messages_text['rus']['success']['edit_product'])
+	await bot_typing(messages[-1], messages_text['rus']['edit_product']['end'])
 
 
 async def edit_product_finish_with_media(message: Message, state=FSMContext):
@@ -352,14 +350,14 @@ async def edit_product_finish_with_media(message: Message, state=FSMContext):
 	db_sess.close()
 	
 	await state.finish()
-	await bot_typing(message, messages_text['rus']['success']['edit_product'])
+	await bot_typing(message, messages_text['rus']['edit_product']['end'])
 
 
 async def edit_product_cancel(callback: CallbackQuery, state=FSMContext) -> None:
 	if await state.get_state() is None:
 		return
 	await state.finish()
-	await bot_typing(callback, messages_text['rus']['fail']['edit_product_cancel'])
+	await bot_typing(callback, messages_text['rus']['edit_product']['cancel'])
 
 
 async def edit_status(message: Message) -> None:
@@ -368,7 +366,7 @@ async def edit_status(message: Message) -> None:
 	if person.status not in ('admin', 'owner'):
 		await bot_typing(message, messages_text['rus']['fail']['low_status'])
 	else:
-		await bot_typing(message, messages_text['rus']['edit_status_states']['enter_id'])
+		await bot_typing(message, messages_text['rus']['edit_status']['start'])
 		await EditStatusStates.user_id.set()
 	db_sess.close()
 
@@ -380,9 +378,9 @@ async def choose_status(message: Message, state=FSMContext) -> None:
 			_data['id'] = int(message.text)
 		if db_sess.query(User).filter(User.id == _data['id']).first() is None:
 			await bot_typing(message, messages_text['rus']['fail']['id_not_found'])
-			await bot_typing(message, messages_text['rus']['edit_status_states']['enter_id'])
+			await bot_typing(message, messages_text['rus']['edit_status']['start'])
 		else:
-			await bot_typing(message, messages_text['rus']['edit_status_states']['enter_status'],
+			await bot_typing(message, messages_text['rus']['edit_status']['enter_status'],
 			                 reply_markup=InlineKeyboardMarkup(one_time_keyboard=True).add(
 				InlineKeyboardButton('user', callback_data=f'user')).add(
 				InlineKeyboardButton('seller', callback_data=f'seller')).add(
@@ -390,7 +388,7 @@ async def choose_status(message: Message, state=FSMContext) -> None:
 				InlineKeyboardButton('admin', callback_data=f'admin')))
 			await EditStatusStates.next()
 	except ValueError:
-		await bot_typing(message, messages_text['rus']['edit_status_states']['enter_id'])
+		await bot_typing(message, messages_text['rus']['edit_status']['start'])
 	db_sess.close()
 
 
@@ -405,13 +403,13 @@ async def edit_status_end(callback: CallbackQuery, state=FSMContext):
 	db_sess.close()
 	
 	await state.finish()
-	await bot_answer_callback_query(callback, messages_text['rus']['success']['edit_status'])
+	await bot_answer_callback_query(callback, messages_text['rus']['edit_status']['end'])
 
 
 async def edit_status_cancel(message: Message, state=FSMContext) -> None:
 	if await state.get_state() is None:
 		return
-	await bot_typing(message, messages_text['rus']['edit_status_states']['cancel'])
+	await bot_typing(message, messages_text['rus']['edit_status']['cancel'])
 	await state.finish()
 	
 	
@@ -421,7 +419,7 @@ async def show_everybody_start(message: Message) -> None:
 	if person.status not in ('admin', 'owner'):
 		await bot_typing(message, messages_text['rus']['fail']['low_status'])
 	else:
-		await bot_typing(message, messages_text['rus']['show_everyone_states']['start'])
+		await bot_typing(message, messages_text['rus']['show_everyone']['start'])
 		await ShowEveryoneStates.show.set()
 	db_sess.close()
 
@@ -431,12 +429,12 @@ async def show_everybody_end(message: Message, state=FSMContext) -> None:
 	persons = db_sess.query(User).all()
 	for person in persons:
 		await message.copy_to(person.id)
-	await bot_typing(message, messages_text['rus']['show_everyone_states']['end'])
+	await bot_typing(message, messages_text['rus']['show_everyone']['end'])
 	await state.finish()
 
 
 async def show_everybody_cancel(message: Message, state=FSMContext) -> None:
 	if await state.get_state() is None:
 		return
-	await bot_typing(message, messages_text['rus']['show_everyone_states']['cancel'])
+	await bot_typing(message, messages_text['rus']['show_everyone']['cancel'])
 	await state.finish()

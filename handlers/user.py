@@ -19,7 +19,7 @@ def register_user_handlers(dp: Dispatcher) -> None:
 
 async def start(message: Message) -> None:
 	await bot_sending_sticker(message, 'start_sticker')
-	await bot_typing(message, messages_text['rus']['command_messages']['start'])
+	await bot_typing(message, messages_text['rus']['start'])
 	
 	db_sess = db_session.create_session()
 	if not db_sess.query(User).filter(User.id == message.from_id).first():
@@ -35,10 +35,8 @@ async def start(message: Message) -> None:
 
 async def send_contacts(message: Message) -> None:
 	await bot_sending_sticker(message, 'start_sticker')
-	await bot_typing(message, messages_text['rus']['command_messages']['telegram_contacts'], parse_mode='HTML')
-	await bot_typing(message, messages_text['rus']['command_messages']['avito_contacts'], parse_mode='HTML')
-	# with open('text.txt', 'r') as file:
-	# 	await bot_typing(message, file.read(), parse_mode='HTML')
+	await bot_typing(message, messages_text['rus']['telegram_contacts'], parse_mode='HTML')
+	await bot_typing(message, messages_text['rus']['avito_contacts'], parse_mode='HTML')
 
 
 async def show_products(message: Message) -> None:
@@ -55,14 +53,20 @@ async def show_products(message: Message) -> None:
 			if images != [''] or videos != ['']:
 				await bot_sending_media(message, images, videos)
 			if quantity.__class__.__name__ == 'int' and quantity > 0:
-				await bot_typing(message, f"Название: {name}\nКатегория: {category}\n"
-				                          f"Описание: {description}.\nСтоимость {price}₽")
+				await bot_typing(message, messages_text['rus']['show_product'].replace(
+					'{name}', f'{name}').replace(
+					'{category}', f'{category}').replace(
+					'{description}', f'{description}').replace(
+					'{price}', f'{price}'))
 			else:
-				await bot_typing(message, f"Название: {name}\nКатегория: {category}\n"
-				                          f"Описание: {description}.\nСтоимость {price}₽\n\n"
-				                          f"В настоящее время нет в наличии")
+				await bot_typing(message, messages_text['rus']['show_product'].replace(
+					                 '{name}', f'{name}').replace(
+					                 '{category}', f'{category}').replace(
+					                 '{description}', f'{description}').replace(
+					                 '{price}', f'{price}' +
+					                            f"\n\n{messages_text['rus']['fail']['product_not_found']}"))
 	else:
-		await bot_typing(message, f"В настоящее время на складе нет товаров")
+		await bot_typing(message, messages_text['rus']['fail']['warehouse_empty'])
 	db_sess.close()
 
 
